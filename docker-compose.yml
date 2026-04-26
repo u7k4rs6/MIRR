@@ -1,0 +1,9 @@
+services:
+  incident-lab:
+    build: .
+    ports:
+      - "7860:7860"
+    environment:
+      - PORT=7860
+    volumes:
+      - ./sample_telemetry:/data:ro

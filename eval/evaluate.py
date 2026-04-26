@@ -1,7 +1,12 @@
 import json
 import os
+from pathlib import Path
 
 import matplotlib
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

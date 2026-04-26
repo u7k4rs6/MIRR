@@ -8,15 +8,15 @@
 
 | Deliverable | Link |
 |-------------|------|
-| HF Space (live demo) | [huggingface.co/spaces/u7k4rs6/Metafinal](https://huggingface.co/spaces/u7k4rs6/Metafinal) |
-| Training Notebook (Colab) | [Open in Colab](https://colab.research.google.com/drive/16Rq5AQ3yvXiKh_3Chs1fx41YK7isWNJp?usp=sharing) |
+| HF Space (live demo) | Create a Space from this repo, then paste your URL here (e.g. `huggingface.co/spaces/YOUR_USERNAME/...`) |
+| Training Notebook (Colab) | [Open in Colab](https://colab.research.google.com/drive/16Rq5AQ3yvXiKh_3Chs1fx41YK7isWNJp?usp=sharing) — or upload `train.ipynb` from this clone |
 | Blog Post | [github.com/snowhiteohno/MetaFinal-C](https://github.com/snowhiteohno/MetaFinal-C) |
-| Trained Model | **Not on the Hub yet** — run **Step 3** in Colab after training. Target repo id: `u7k4rs6/incident-response-grpo` (`create_repo` in the notebook creates it on first push). Optional: [create empty model repo](https://huggingface.co/new) first with that exact name. |
-| Episode rollouts (Dataset) | **Step 4** in Colab — target: `u7k4rs6/incident-response-rollouts`. Optional: [create empty dataset repo](https://huggingface.co/new-dataset). |
+| Trained Model | Run **Step 3** in `train.ipynb` after training. Set `HF_TOKEN` + `HF_HUB_USERNAME` (or `HF_MODEL_REPO`). Default id: `YOUR_USERNAME/incident-response-grpo`. Optional: [new model repo](https://huggingface.co/new). |
+| Episode rollouts (Dataset) | **Step 4** in `train.ipynb` — default id: `YOUR_USERNAME/incident-response-rollouts`, or set `HF_DATASET_REPO`. Optional: [new dataset repo](https://huggingface.co/new-dataset). |
 
 ### Hub uploads (after training)
 
-In Colab, set a **write** token as `HF_TOKEN` ([token settings](https://huggingface.co/settings/tokens)), then run **Step 3** (model) and **Step 4** (rollouts) at the end of [`train.ipynb`](https://colab.research.google.com/drive/16Rq5AQ3yvXiKh_3Chs1fx41YK7isWNJp?usp=sharing). After Step 3 succeeds, the model will be at `https://huggingface.co/u7k4rs6/incident-response-grpo`; after Step 4, the dataset at `https://huggingface.co/datasets/u7k4rs6/incident-response-rollouts` — you can paste those into the table above once they resolve.
+In Colab (or locally), set a **write** token as `HF_TOKEN` and your Hub username as `HF_HUB_USERNAME` ([token settings](https://huggingface.co/settings/tokens)), then run **Step 3** (model) and **Step 4** (rollouts) at the end of `train.ipynb`. URLs will be `https://huggingface.co/YOUR_USERNAME/incident-response-grpo` and `https://huggingface.co/datasets/YOUR_USERNAME/incident-response-rollouts` unless you override with `HF_MODEL_REPO` / `HF_DATASET_REPO`. Copy `.env.example` to `.env` for local runs (`.env` is gitignored).
 
 ## Training Curves
 

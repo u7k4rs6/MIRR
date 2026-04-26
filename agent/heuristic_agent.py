@@ -142,6 +142,17 @@ class HeuristicAgent:
             else (lr_prev_raw if isinstance(lr_prev_raw, str) else str(lr_prev_raw))
         ).lower()
 
+        if "cascade" in lr_prev or "new primary" in lr_prev:
+            self._diagnosed = False
+            self._stabilize = False
+            self._issued_fix = False
+            self._checked.clear()
+            self._suspected = None
+            self._log_by_service = {}
+            self._failure_mode_guess = "crashed"
+            self._bad_restart_count = 0
+            self._no_effect_restarts = 0
+
         health = float(obs.get("system_health_score", 0) or 0)
         recovering_msg = (
             "service recovering" in lr_prev

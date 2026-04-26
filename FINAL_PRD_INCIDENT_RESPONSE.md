@@ -17,6 +17,95 @@
 
 ---
 
+## IMPLEMENTATION ADDENDUM — MIRR (keep this section updated with the repo)
+
+**Canonical remote for this line of work:** [github.com/u7k4rs6/MIRR](https://github.com/u7k4rs6/MIRR)
+
+The numbered **FILE** sections below are the **original hackathon spec** (reference + validator expectations). The **checked-in code** is the source of truth when details differ (e.g. `apply_fix` return arity, `reset()` options, Gradio tabs).
+
+### As-built tree (high level)
+
+```
+MIRR/
+├── env/
+│   ├── __init__.py
+│   ├── actions.py           ← runbook aliases → canonical action types
+│   ├── curriculum.py        ← curriculum_stage noise + horizon helpers
+│   ├── daily.py             ← UTC daily challenge seed + scenario rotation
+│   ├── environment.py       ← OpenEnv-style env + rich_ui + cost + compound diagnosis reset
+│   ├── explanation.py       ← optional diagnosis evidence score (end of episode)
+│   ├── replay.py            ← episode JSON + parse + recompute_episode()
+│   ├── scenarios.py         ← named scenarios, compound_secondary, red herrings
+│   ├── simulator.py         ← propagation + compound cascade + metric_noise_std
+│   └── telemetry.py         ← SimulatorTelemetry + FileTelemetry (JSONL)
+├── agent/ …
+├── eval/evaluate.py
+├── scripts/post_daily_slack.py
+├── sample_telemetry/        ← optional FileTelemetry demo payloads
+├── docker-compose.yml
+├── Dockerfile
+├── app.py                     ← Gradio: Watch, Human, Compare, Replay import, Daily, Toolkit
+├── openenv.yaml
+├── train.ipynb
+├── requirements.txt
+├── .env.example
+└── README.md
+```
+
+### Runtime features (summary)
+
+| Feature | Where |
+|--------|--------|
+| Named scenarios + taglines | `env/scenarios.py`, `reset(options={"scenario_id"})` |
+| **Compound** second failure after correct primary fix | `ScenarioSpec.compound_secondary`, `simulator.apply_fix` CASCADE, env resets `diagnose` allowance |
+| **Red herring** paging lines | `ScenarioSpec.red_herring_alerts`, stochastic mix into `recent_alerts` |
+| **Runbook** action aliases (`kubectl_logs`, …) | `env/actions.py`, normalized in `IncidentResponseEnv.step` |
+| **`defer`** action | `environment.py`, LLM prompt in `agent/llm_agent.py` |
+| **Diagnosis evidence** optional field | `diagnose` action `evidence` / `rationale` → `info["explanation_score"]` at episode end |
+| **Incident cost** | `info["incident_cost"]` each step; rich UI `cost_breakdown` when `rich_ui=True` |
+| **Curriculum** | `reset(options={"curriculum_stage": 1..4})` via `env/curriculum.py` |
+| **Replay export + import verify** | `env/replay.py`, Gradio tab **Replay import** |
+| **Daily challenge + Slack webhook script** | `env/daily.py`, `scripts/post_daily_slack.py` |
+| **Docker Compose lab** | `docker-compose.yml` (+ existing `Dockerfile`) |
+| **Human vs baseline** | Gradio **Compare vs baseline** tab |
+| **Heuristic compound recovery** | `agent/heuristic_agent.py` clears triage state on CASCADE |
+
+### `IncidentResponseEnv.reset` options (actual)
+
+| Key | Effect |
+|-----|--------|
+| `scenario_id` | Named scenario from `env/scenarios.py` (default surprise) |
+| `rich_ui` | Adds `alert_feed`, `true_health_by_service`, `true_health_history`, `cost_breakdown` to observations |
+| `curriculum_stage` | `1..4` — more metric noise + slightly shorter max horizon |
+
+### `Simulator.reset` parameters (actual)
+
+`seed`, optional `root_cause` + `failure_mode` (both required if either set), optional `compound_secondary=(service, mode)`, `metric_noise_std`.
+
+### `Simulator.apply_fix` return (actual)
+
+`tuple[bool, str, bool]` → effective, message, **`compound_activated`** (CASCADE message includes `// CASCADE:`).
+
+### Gradio tabs (actual)
+
+1. **Watch an agent** — streaming log, mean health + per-service CPU charts, replay JSON  
+2. **Human incident room** — rich UI, runbook labels, evidence/defer fields  
+3. **Compare vs baseline** — baseline agent run + human on same seed, comparison table  
+4. **Replay import** — paste JSON, `recompute_episode` verification + charts  
+5. **Daily challenge** — UTC blurb + refresh  
+6. **Toolkit** — alias / curriculum / telemetry notes  
+
+### Validation checklist — code on `main` (HF / links still owner action)
+
+- [ ] Public HF Space — logged-out test (owner)
+- [x] `openenv.yaml` at repo root
+- [x] `environment.py` — `reset` / `step` / `render`
+- [x] `training_curves/*.png` present in repo (regenerate via `eval/evaluate.py` if needed)
+- [x] `train.ipynb` present (Colab link in README — verify periodically)
+- [ ] `README.md` — HF Space URL still placeholder until published
+
+---
+
 ## REPO STRUCTURE (exact, build this)
 
 ```
@@ -1016,4 +1105,6 @@ demo.launch(server_name="0.0.0.0", server_port=7860)
 
 ---
 
-*Version FINALE — optimized for speed and validation pass. Every checklist item has a concrete file that satisfies it.*
+*Version FINALE — optimized for speed and validation pass. Every checklist item has a concrete file that satisfies it. **IMPLEMENTATION ADDENDUM** above tracks MIRR-specific deltas vs this frozen spec; update it whenever behavior or layout changes.*
+
+**Primary Git remote for this fork:** [https://github.com/u7k4rs6/MIRR](https://github.com/u7k4rs6/MIRR)
