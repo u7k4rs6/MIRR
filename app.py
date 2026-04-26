@@ -539,9 +539,9 @@ LEADERBOARD_MD = """
 
 RUNBOOK_CHOICES = runbook_dropdown_choices()
 
-with gr.Blocks(title="Incident Response Lab") as demo:
+with gr.Blocks(title="MIRR — Incident lab") as demo:
     gr.Markdown(
-        "# Incident response lab\n"
+        "# MIRR — incident lab\n"
         "Microservice incident **sandbox**: scenarios, compound failures, runbook-shaped actions, "
         "cost accounting, replay JSON, and optional **daily** + **Slack** hooks."
     )

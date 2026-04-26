@@ -1,8 +1,8 @@
-# Incident Response Agent — OpenEnv
+# MIRR — Microservice Incident Response & Recovery
 
-**Meta × PyTorch Hackathon Submission**
+**Personal project.** Simulated microservice outages, classical and LLM agents, GRPO-oriented training hooks, and a Gradio lab to watch or step through incidents.
 
-> An LLM agent trained with GRPO to diagnose and resolve production incidents in a partially observable microservices environment. Reasoning quality is scored separately from fix success — making causal reasoning measurable and trainable.
+> Train and compare agents that diagnose and fix a partially observable failure across five services. Diagnosis is scored separately from the fix so reasoning stays measurable.
 
 ## Links
 
@@ -79,8 +79,8 @@ On Linux or macOS, use `export GROQ_API_KEY=...` and `export PYTHONPATH="$(pwd)"
 ## File Structure
 
 ```
-openenv.yaml          — OpenEnv grader config
-env/environment.py    — OpenEnv interface (reset/step/render)
+openenv.yaml          — Env metadata (id, thresholds, service list)
+env/environment.py    — Episodic API (reset / step / render)
 env/simulator.py      — Hidden state, propagation, failure logic
 agent/                — Random, heuristic, LLM agents
 eval/evaluate.py      — Evaluation + curve generation
@@ -89,13 +89,13 @@ app.py                — Gradio demo
 training_curves/      — Committed reward/loss PNGs
 ```
 
-## Validation Checklist
+## Release checklist (optional)
 
-- [ ] Public HF Space — test from a **logged-out** browser
+- [ ] Public HF Space — smoke-test from a logged-out / incognito browser
 - [ ] `openenv.yaml` at repo root
 - [ ] `environment.py` implements `reset()` / `step()` / `render()`
 - [ ] `training_curves/reward_curve.png` and `loss_curve.png` committed
-- [ ] `train.ipynb` runnable; Colab link in this README
-- [ ] README links and embedded plots updated for judges
+- [ ] `train.ipynb` runnable; Colab copy in sync if you use Drive
+- [ ] README links and embedded plots point at live URLs
 
-Double-check every link in a **logged-out** browser before submit. Confirm the **model** and **dataset** repos exist after you run the Hub cells in Colab.
+If you publish a Space or Hub artifacts, open each link in a fresh browser session once.

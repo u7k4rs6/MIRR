@@ -9,7 +9,7 @@ from env.simulator import Simulator, SERVICES, FAILURE_MODES
 
 
 class IncidentResponseEnv:
-    """OpenEnv-compliant environment."""
+    """Episodic microservice incident simulator (reset / step / render)."""
 
     metadata = {"render_modes": ["human", "json"]}
     env_id = "incident-response-v1"

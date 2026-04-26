@@ -1,19 +1,19 @@
-# FINAL PRD — Incident Response OpenEnv
-## Meta × PyTorch Hackathon Finale — Vibecode Edition
+# FINAL PRD — MIRR (Incident Response Lab)
+## Personal project — design specification
 
 > **Free API:** Use **Groq** (not Gemini). Free at console.groq.com. Model: `llama-3.1-8b-instant`. SDK: `pip install groq`. Drop-in OpenAI-compatible.
 
 ---
 
-## VALIDATION CHECKLIST (build against this, not anything else)
+## VALIDATION CHECKLIST (implementation completeness)
 
-- [ ] Public HF Space — test from a **logged-out** browser before submitting
+- [ ] Public HF Space — smoke-test from a **logged-out** browser before sharing widely
 - [ ] `openenv.yaml` present and parseable at repo root
 - [ ] `environment.py` has `reset()` / `step()` / `render()` with correct return types
 - [ ] `training_curves/reward_curve.png` committed to repo
 - [ ] `training_curves/loss_curve.png` committed to repo
 - [ ] `train.ipynb` — runnable Colab, no errors, public link in README
-- [ ] `README.md` — links to HF Space, Colab, and blog post; plots embedded inline with `![](training_curves/reward_curve.png)`
+- [ ] `README.md` — links to HF Space, Colab, and source; plots embedded inline with `![](training_curves/reward_curve.png)`
 
 ---
 
@@ -21,7 +21,7 @@
 
 **Canonical remote for this line of work:** [github.com/u7k4rs6/MIRR](https://github.com/u7k4rs6/MIRR)
 
-The numbered **FILE** sections below are the **original hackathon spec** (reference + validator expectations). The **checked-in code** is the source of truth when details differ (e.g. `apply_fix` return arity, `reset()` options, Gradio tabs).
+The numbered **FILE** sections below are the **frozen reference specification** (design doc + external tool expectations). The **checked-in code** is the source of truth when details differ (e.g. `apply_fix` return arity, `reset()` options, Gradio tabs).
 
 ### As-built tree (high level)
 
@@ -32,7 +32,7 @@ MIRR/
 │   ├── actions.py           ← runbook aliases → canonical action types
 │   ├── curriculum.py        ← curriculum_stage noise + horizon helpers
 │   ├── daily.py             ← UTC daily challenge seed + scenario rotation
-│   ├── environment.py       ← OpenEnv-style env + rich_ui + cost + compound diagnosis reset
+│   ├── environment.py       ← episodic env + rich_ui + cost + compound diagnosis reset
 │   ├── explanation.py       ← optional diagnosis evidence score (end of episode)
 │   ├── replay.py            ← episode JSON + parse + recompute_episode()
 │   ├── scenarios.py         ← named scenarios, compound_secondary, red herrings
@@ -113,7 +113,7 @@ incident-response-env/
 ├── env/
 │   ├── __init__.py
 │   ├── simulator.py          ← hidden state + propagation
-│   └── environment.py        ← OpenEnv interface
+│   └── environment.py        ← episodic env API (reset/step/render)
 ├── agent/
 │   ├── __init__.py
 │   ├── random_agent.py
@@ -134,7 +134,7 @@ incident-response-env/
 
 ---
 
-## FILE 1: `openenv.yaml` (DO NOT SKIP — validator reads this first)
+## FILE 1: `openenv.yaml` (DO NOT SKIP — external tooling may read this first)
 
 ```yaml
 env_id: incident-response-v1
@@ -367,7 +367,7 @@ from typing import Optional
 from env.simulator import Simulator, SERVICES, FAILURE_MODES
 
 class IncidentResponseEnv:
-    """OpenEnv-compliant environment."""
+    """Episodic incident environment (reset/step/render)."""
 
     metadata = {"render_modes": ["human", "json"]}
     env_id = "incident-response-v1"
@@ -870,8 +870,8 @@ LEADERBOARD_MD = """
 | 🤖 Trained LLM | **68%** | **61%** | **22.7** |
 """
 
-with gr.Blocks(title="Incident Response Agent — OpenEnv", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# 🚨 Incident Response Agent\n**Meta × PyTorch Hackathon | OpenEnv Environment**")
+with gr.Blocks(title="MIRR — Incident Response Lab", theme=gr.themes.Soft()) as demo:
+    gr.Markdown("# 🚨 MIRR\n**Microservice Incident Response & Recovery**")
     gr.Markdown("> An LLM agent must diagnose and fix a silent production failure across 5 microservices. Reasoning quality is scored separately from the fix.")
 
     with gr.Row():
@@ -925,11 +925,11 @@ datasets
 ## FILE 10: `README.md` (validation reads this — plots MUST be embedded)
 
 ```markdown
-# Incident Response Agent — OpenEnv
+# MIRR — Microservice Incident Response & Recovery
 
-**Meta × PyTorch Hackathon Submission**
+**Personal project.**
 
-> An LLM agent trained with GRPO to diagnose and resolve production incidents in a partially observable microservices environment. Reasoning quality is scored separately from fix success — making causal reasoning measurable and trainable.
+> Simulated outages, classical and LLM agents, GRPO-oriented training. Diagnosis scored separately from the fix.
 
 ## 🔗 Links
 
@@ -992,13 +992,13 @@ python app.py             # local demo
 ## File Structure
 
 ```
-env/environment.py    — OpenEnv interface (reset/step/render)
+env/environment.py    — episodic interface (reset/step/render)
 env/simulator.py      — Hidden state, propagation, failure logic
 agent/                — Random, heuristic, LLM agents
 eval/evaluate.py      — Evaluation + curve generation
 train.ipynb           — GRPO training notebook (Colab)
 app.py                — Gradio demo
-openenv.yaml          — OpenEnv grader config
+openenv.yaml          — env metadata bundle (id, thresholds, services)
 ```
 ```
 
@@ -1082,7 +1082,7 @@ client = Groq(api_key=os.environ["GROQ_API_KEY"])
 # mixtral-8x7b-32768    ← good context window
 ```
 
-**Rate limits on free tier:** 30 req/min, 14,400 req/day — more than enough for a hackathon demo.
+**Rate limits on free tier:** 30 req/min, 14,400 req/day — plenty for interactive demos.
 
 ---
 
@@ -1105,6 +1105,6 @@ demo.launch(server_name="0.0.0.0", server_port=7860)
 
 ---
 
-*Version FINALE — optimized for speed and validation pass. Every checklist item has a concrete file that satisfies it. **IMPLEMENTATION ADDENDUM** above tracks MIRR-specific deltas vs this frozen spec; update it whenever behavior or layout changes.*
+*This PRD mixes a frozen reference spec (FILE sections) with a living **IMPLEMENTATION ADDENDUM**; update the addendum whenever behavior or layout changes.*
 
 **Primary Git remote for this fork:** [https://github.com/u7k4rs6/MIRR](https://github.com/u7k4rs6/MIRR)
