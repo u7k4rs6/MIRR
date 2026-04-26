@@ -10,7 +10,7 @@
 |-------------|------|
 | HF Space (live demo) | Create a Space from this repo, then paste your URL here (e.g. `huggingface.co/spaces/YOUR_USERNAME/...`) |
 | Training Notebook (Colab) | [Open in Colab](https://colab.research.google.com/drive/16Rq5AQ3yvXiKh_3Chs1fx41YK7isWNJp?usp=sharing) — or upload `train.ipynb` from this clone |
-| Blog Post | [github.com/snowhiteohno/MetaFinal-C](https://github.com/snowhiteohno/MetaFinal-C) |
+| Source / updates | [github.com/u7k4rs6/MIRR](https://github.com/u7k4rs6/MIRR) |
 | Trained Model | Run **Step 3** in `train.ipynb` after training. Set `HF_TOKEN` + `HF_HUB_USERNAME` (or `HF_MODEL_REPO`). Default id: `YOUR_USERNAME/incident-response-grpo`. Optional: [new model repo](https://huggingface.co/new). |
 | Episode rollouts (Dataset) | **Step 4** in `train.ipynb` — default id: `YOUR_USERNAME/incident-response-rollouts`, or set `HF_DATASET_REPO`. Optional: [new dataset repo](https://huggingface.co/new-dataset). |
 
