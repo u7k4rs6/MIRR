@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-08-19T09:06:55Z",
+  "code_fingerprint": "sha256:b71c0a49872592b9",
+  "git_sha_at_measurement": "f3e26b9",
+  "git_dirty_at_measurement": true,
+  "seed": 12345,
+  "episodes_per_agent": 100,
+  "max_steps": 20,
+  "agents_evaluated": [
+    "Random",
+    "Heuristic"
+  ],
+  "results": {
+    "Random": {
+      "mean_reward": -18.22,
+      "success_rate": 0.16,
+      "diagnosis_accuracy": 0.04
+    },
+    "Heuristic": {
+      "mean_reward": 52.98,
+      "success_rate": 1.0,
+      "diagnosis_accuracy": 1.0
+    }
+  }
+}

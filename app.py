@@ -537,6 +537,39 @@ LEADERBOARD_MD = """
 | **Toolkit** | Aliases, curriculum, telemetry notes |
 """
 
+
+def _baselines_md() -> str:
+    """Render the committed baseline measurements. Read from eval/results.json so
+    the app cannot drift from the README - both render the same artifact."""
+    path = Path(__file__).resolve().parent / "eval" / "results.json"
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return (
+            "\n**Baselines:** not measured yet - run `python eval/evaluate.py` "
+            "to generate `eval/results.json`.\n"
+        )
+    rows = [
+        "| Agent | Success Rate | Diagnosis Acc. | Mean Reward |",
+        "|---|---|---|---|",
+    ]
+    for name, r in data.get("results", {}).items():
+        rows.append(
+            f"| {name} | {r['success_rate'] * 100:.0f}% | "
+            f"{r['diagnosis_accuracy'] * 100:.0f}% | {r['mean_reward']} |"
+        )
+    rows.append("")
+    rows.append(
+        f"Measured over n={data.get('episodes_per_agent')} episodes per agent, "
+        f"seed={data.get('seed')}, max_steps={data.get('max_steps')}, "
+        f"code `{data.get('code_fingerprint')}`. LLM agents are excluded: they call a live "
+        "API, so their scores are not reproducible from this repo."
+    )
+    return "\n".join(rows)
+
+
+BASELINES_MD = _baselines_md()
+
 RUNBOOK_CHOICES = runbook_dropdown_choices()
 
 with gr.Blocks(title="MIRR — Incident lab") as demo:
@@ -551,6 +584,7 @@ with gr.Blocks(title="MIRR — Incident lab") as demo:
     with gr.Tabs():
         with gr.Tab("Watch an agent"):
             gr.Markdown(LEADERBOARD_MD)
+            gr.Markdown(BASELINES_MD)
             with gr.Row():
                 with gr.Column(scale=2):
                     scenario_dd = gr.Dropdown(

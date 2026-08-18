@@ -10,11 +10,11 @@
 
 A playground for agents that think under pressure.
 
-MIRR is a partially observable microservice environment where classical rules-based agents, LLM agents, and GRPO-trained models compete to diagnose and recover a broken distributed system - before it cascades into total failure.
+MIRR is a partially observable microservice environment where classical rules-based agents and LLM agents diagnose and recover a broken distributed system - before it cascades into total failure. The environment is GRPO-ready and `train.ipynb` scaffolds a training loop, but no model has been trained against it yet and no checkpoint exists.
 
 Five services. One hidden fault. Noisy metrics. A diagnosis action that forces the agent to commit its reasoning before it acts.
 
-You can watch it happen live in the Gradio demo, step through episodes frame by frame, or train your own model and see the reward curves climb.
+You can watch it happen live in the Gradio demo, step through episodes frame by frame, or wire your own model into the training scaffold.
 
 ---
 
@@ -29,21 +29,6 @@ You can watch it happen live in the Gradio demo, step through episodes frame by 
 | Episode Rollouts (Dataset) | Step 4 in `train.ipynb`. Default: `YOUR_USERNAME/incident-response-rollouts` |
 
 **Hub uploads:** Set `HF_TOKEN` and `HF_HUB_USERNAME` in Colab (or `.env` locally), then run Steps 3 and 4 of `train.ipynb`. Copy `.env.example` to `.env` for local runs - it's gitignored.
-
----
-
-## Training Curves
-
-<table>
-<tr>
-<td><img src="training_curves/reward_curve.png" alt="Reward Curve" width="400"/></td>
-<td><img src="training_curves/loss_curve.png" alt="Loss Curve" width="400"/></td>
-</tr>
-<tr>
-<td align="center"><em>Reward Curve</em></td>
-<td align="center"><em>Loss Curve</em></td>
-</tr>
-</table>
 
 ---
 
@@ -112,11 +97,12 @@ The `bad_deploy` mode is the one that breaks naive heuristics. If your agent's m
 
 | Agent | Success Rate | Diagnosis Acc. | Mean Reward |
 |---|---|---|---|
-| Random | 10% | 5% | -8.2 |
-| Heuristic (log-aware) | ~68% | ~99% | ~81 |
-| Trained LLM | 68% | 61% | 22.7 |
+| Random | 16% | 4% | -18.22 |
+| Heuristic (log-aware) | 100% | 100% | 52.98 |
 
-The heuristic agent has near-perfect diagnosis accuracy because it directly pattern-matches logs - it knows exactly what to look for. The trained LLM matches its success rate but gets there differently: messier diagnosis, better generalization. The gap in diagnosis accuracy (99% vs 61%) while achieving the same success rate tells you something interesting about how LLMs recover from wrong beliefs mid-episode.
+Measured over n=100 episodes per agent, seed=12345, `max_steps=20`. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
+
+LLM agents are deliberately absent from this table. They call a live third-party API, so their scores are not reproducible from this repo alone.
 
 ---
 
@@ -127,10 +113,10 @@ openenv.yaml          - Env metadata (id, thresholds, service list)
 env/environment.py    - Episodic API: reset / step / render
 env/simulator.py      - Hidden state, failure propagation, health logic
 agent/                - Random, heuristic, and LLM agents
-eval/evaluate.py      - Evaluation loop + curve generation
-train.ipynb           - GRPO training notebook (Colab-ready)
+eval/evaluate.py      - Evaluation loop (writes eval/results.json)
+eval/results.json     - Committed baseline measurements
+train.ipynb           - GRPO training scaffold (Colab-ready; no trained model yet)
 app.py                - Gradio live demo
-training_curves/      - reward_curve.png, loss_curve.png
 ```
 
 The environment is OpenEnv-compliant. `reset()` / `step()` / `render()` are implemented per spec. Drop in any compatible agent and it runs.
@@ -176,7 +162,7 @@ Most RL environments are either too clean (CartPole, Atari) or too opaque (produ
 
 MIRR sits in the middle - messy enough that brute force fails, structured enough that you can actually measure reasoning. The `diagnose()` action exists because I wanted to see if forcing an explicit commitment step changed how agents behave. It does.
 
-GRPO training hooks are built in. Bring your own model, point it at the rollout format, and watch whether it learns to think before it acts.
+The GRPO scaffolding is in place - reward function, rollout format, and a Colab notebook. I have not trained a model against it yet, so there is no checkpoint and no training curve to show. Bring your own model and point it at the rollout format.
 
 ---
 
