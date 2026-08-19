@@ -22,7 +22,17 @@ END = "<!-- END GENERATED RESULTS -->"
 
 LABELS = {"Heuristic": "Heuristic (log-aware)"}
 
-REQUIRED_TOP = ("results", "seed", "episodes_per_agent", "max_steps", "code_fingerprint")
+# Mirrors the payload written by eval/evaluate.py. No timestamp field: the
+# artifact is identified by content, so re-running leaves the tree clean.
+REQUIRED_TOP = (
+    "results",
+    "seed",
+    "episodes_per_agent",
+    "max_steps",
+    "code_fingerprint",
+    "code_git_sha",
+    "code_git_dirty",
+)
 REQUIRED_PER_AGENT = ("success_rate", "diagnosis_accuracy", "mean_reward")
 
 

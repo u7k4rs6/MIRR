@@ -1,8 +1,7 @@
 {
-  "generated_at": "2026-08-19T09:39:23Z",
   "code_fingerprint": "sha256:621558321891274f",
-  "git_sha_at_measurement": "cbae724",
-  "git_dirty_at_measurement": true,
+  "code_git_sha": "4a197bd",
+  "code_git_dirty": false,
   "seed": 12345,
   "episodes_per_agent": 100,
   "max_steps": 30,

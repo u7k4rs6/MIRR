@@ -3,7 +3,6 @@ import json
 import random
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -66,21 +65,28 @@ def _code_fingerprint() -> str:
     return "sha256:" + h.hexdigest()[:16]
 
 
-def _git_sha() -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, text=True
-        ).strip()
-    except Exception:
-        return "unknown"
+# Git context is anchored to the measured code, not to the moment the script ran.
+# A run-time HEAD changes on every unrelated commit, so the artifact would dirty
+# the working tree on every re-run. These fields move only when env/ or agent/
+# move - the same condition that changes code_fingerprint.
+CODE_PATHS = ("env", "agent")
 
 
-def _git_dirty() -> bool:
+def _git(*args: str) -> str:
     try:
-        out = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True)
-        return bool(out.strip())
+        return subprocess.check_output(["git", *args], cwd=ROOT, text=True).strip()
     except Exception:
-        return False
+        return ""
+
+
+def _code_git_sha() -> str:
+    """Last commit that touched the code under test."""
+    return _git("log", "-1", "--format=%h", "--", *CODE_PATHS) or "unknown"
+
+
+def _code_git_dirty() -> bool:
+    """True if the code under test has uncommitted changes."""
+    return bool(_git("status", "--porcelain", "--", *CODE_PATHS))
 
 
 def run_leaderboard(n=N_EPISODES, seed=SEED):
@@ -100,11 +106,13 @@ def run_leaderboard(n=N_EPISODES, seed=SEED):
         }
         print(f"{name}: {json.dumps(results[name])}")
 
+    # No timestamp: the artifact is identified by code_fingerprint, not by when it
+    # was produced. A wall-clock field would make every re-run dirty the tree even
+    # when nothing measured has changed.
     payload = {
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "code_fingerprint": _code_fingerprint(),
-        "git_sha_at_measurement": _git_sha(),
-        "git_dirty_at_measurement": _git_dirty(),
+        "code_git_sha": _code_git_sha(),
+        "code_git_dirty": _code_git_dirty(),
         "seed": seed,
         "episodes_per_agent": n,
         "max_steps": MAX_STEPS,
