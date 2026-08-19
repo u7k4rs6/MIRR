@@ -22,9 +22,46 @@ END = "<!-- END GENERATED RESULTS -->"
 
 LABELS = {"Heuristic": "Heuristic (log-aware)"}
 
+REQUIRED_TOP = ("results", "seed", "episodes_per_agent", "max_steps", "code_fingerprint")
+REQUIRED_PER_AGENT = ("success_rate", "diagnosis_accuracy", "mean_reward")
+
+
+def fail(msg: str) -> "NoReturn":
+    """Every abnormal exit goes through here: a guard that cannot find what it is
+    checking must fail loudly, never report success."""
+    print(f"sync_readme_results: {msg}", file=sys.stderr)
+    raise SystemExit(2)
+
+
+def load_results() -> dict:
+    if not RESULTS.is_file():
+        fail(f"{RESULTS} is missing - run: python eval/evaluate.py")
+    try:
+        d = json.loads(RESULTS.read_text())
+    except ValueError as e:
+        fail(f"{RESULTS} is not valid JSON: {e}")
+    if not isinstance(d, dict):
+        fail(f"{RESULTS} must contain a JSON object, got {type(d).__name__}")
+    missing = [k for k in REQUIRED_TOP if k not in d]
+    if missing:
+        fail(f"{RESULTS} is missing required key(s): {', '.join(missing)}")
+    results = d["results"]
+    if not isinstance(results, dict) or not results:
+        fail(
+            f"{RESULTS} has no measured agents - refusing to publish an empty "
+            "results table. Run: python eval/evaluate.py"
+        )
+    for agent, r in results.items():
+        if not isinstance(r, dict):
+            fail(f"{RESULTS}: entry for {agent!r} is not an object")
+        bad = [k for k in REQUIRED_PER_AGENT if not isinstance(r.get(k), (int, float))]
+        if bad:
+            fail(f"{RESULTS}: agent {agent!r} missing/non-numeric: {', '.join(bad)}")
+    return d
+
 
 def render() -> str:
-    d = json.loads(RESULTS.read_text())
+    d = load_results()
     rows = [
         "| Agent | Success Rate | Diagnosis Acc. | Mean Reward |",
         "|---|---|---|---|",
@@ -49,16 +86,26 @@ def render() -> str:
 
 
 def splice(text: str, body: str) -> str:
-    if BEGIN not in text or END not in text:
-        sys.exit(f"markers missing from {README.name}: expected {BEGIN} ... {END}")
+    if text.count(BEGIN) != 1 or text.count(END) != 1:
+        fail(
+            f"expected exactly one {BEGIN} ... {END} pair in {README.name} "
+            f"(found {text.count(BEGIN)} begin / {text.count(END)} end markers)"
+        )
+    if text.index(BEGIN) > text.index(END):
+        fail(f"{README.name}: END marker appears before BEGIN")
     head, rest = text.split(BEGIN, 1)
     _, tail = rest.split(END, 1)
     return f"{head}{BEGIN}\n{body}\n{END}{tail}"
 
 
 def main() -> int:
+    if not README.is_file():
+        fail(f"{README} is missing")
     current = README.read_text()
-    updated = splice(current, render())
+    body = render()
+    if len([ln for ln in body.splitlines() if ln.startswith("| ")]) < 3:
+        fail("rendered results block has no data rows - refusing to publish it")
+    updated = splice(current, body)
     if "--check" in sys.argv:
         if current != updated:
             print(
