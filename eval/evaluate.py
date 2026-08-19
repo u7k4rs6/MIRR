@@ -31,6 +31,9 @@ N_EPISODES = 100
 # bonus scales with the horizon, so this materially changes mean reward.
 MAX_STEPS = 30
 RESULTS_PATH = ROOT / "eval" / "results.json"
+# Per-episode records for resume. Gitignored: this is scratch state for an
+# in-progress run, not a published artifact.
+MANIFEST_ROOT = ROOT / "eval" / ".runs"
 
 
 AGENTS = {"Random": RandomAgent, "Heuristic": HeuristicAgent}
@@ -85,6 +88,45 @@ def run_one_episode(task: tuple) -> dict:
     }
 
 
+def _run_id(n: int, seed: int, max_steps: int) -> str:
+    """Identifies a run configuration. Resuming only reuses records produced by
+    the same config AND the same code, so a code change starts a fresh run
+    instead of silently mixing measurements."""
+    key = f"{_code_fingerprint()}|{n}|{seed}|{max_steps}"
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+
+def _record_path(run_dir: Path, agent_name: str, idx: int) -> Path:
+    return run_dir / f"{agent_name}-{idx:06d}.json"
+
+
+def _write_record(run_dir: Path, rec: dict) -> None:
+    """Atomic: write to a temp file then rename. A kill mid-write leaves either
+    nothing or a complete record - never a truncated one that would be read back
+    as valid on resume."""
+    dst = _record_path(run_dir, rec["agent"], rec["index"])
+    tmp = dst.with_suffix(".tmp")
+    tmp.write_text(json.dumps(rec))
+    os.replace(tmp, dst)
+
+
+def _load_records(run_dir: Path, agent_name: str, n: int) -> dict:
+    """Completed episodes for this agent, keyed by index. Unreadable records are
+    ignored so a corrupt file causes a re-run, not a crash or a bad aggregate."""
+    done = {}
+    for idx in range(n):
+        f = _record_path(run_dir, agent_name, idx)
+        if not f.is_file():
+            continue
+        try:
+            rec = json.loads(f.read_text())
+        except ValueError:
+            continue
+        if rec.get("index") == idx and rec.get("agent") == agent_name:
+            done[idx] = rec
+    return done
+
+
 def _chunks(tasks: list, workers: int) -> list:
     """Contiguous slices, one per worker, so IPC is paid per worker rather than
     per episode. Episodes are short; per-task dispatch would dominate."""
@@ -99,20 +141,36 @@ def _run_chunk(chunk: list) -> list:
 
 
 def run_episodes(agent_name: str, n=N_EPISODES, base_seed=SEED, max_steps=MAX_STEPS,
-                 workers: int = 1) -> list:
+                 workers: int = 1, run_dir: Path = None) -> list:
     """Run n episodes, optionally across a local process pool.
 
     Returns records sorted by episode index, never by completion order - so the
-    aggregate is bit-identical regardless of worker count.
+    aggregate is bit-identical regardless of worker count. When `run_dir` is set,
+    each completed episode is written out and already-completed ones are skipped,
+    making an interrupted run resumable.
     """
-    tasks = [(agent_name, i, base_seed, max_steps) for i in range(n)]
-    if workers <= 1:
-        records = [run_one_episode(t) for t in tasks]
-    else:
-        records = []
-        with ProcessPoolExecutor(max_workers=workers) as pool:
-            for batch in pool.map(_run_chunk, _chunks(tasks, workers)):
-                records.extend(batch)
+    done = _load_records(run_dir, agent_name, n) if run_dir else {}
+    todo = [(agent_name, i, base_seed, max_steps) for i in range(n) if i not in done]
+    if done:
+        print(f"  {agent_name}: resuming, {len(done)}/{n} already complete")
+
+    fresh = []
+    if todo:
+        if workers <= 1:
+            for task in todo:
+                rec = run_one_episode(task)
+                if run_dir:
+                    _write_record(run_dir, rec)
+                fresh.append(rec)
+        else:
+            with ProcessPoolExecutor(max_workers=workers) as pool:
+                for batch in pool.map(_run_chunk, _chunks(todo, workers)):
+                    for rec in batch:
+                        if run_dir:
+                            _write_record(run_dir, rec)
+                    fresh.extend(batch)
+
+    records = list(done.values()) + fresh
     records.sort(key=lambda r: r["index"])
     return records
 
@@ -173,7 +231,7 @@ def default_workers() -> int:
     return os.cpu_count() or 1
 
 
-def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1):
+def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = True):
     """Measure the deterministic baselines. LLM agents are not evaluated here:
     they depend on a live third-party API, so their numbers are not reproducible
     from this repo alone."""
@@ -181,9 +239,16 @@ def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1):
         f"\n=== LEADERBOARD (n={n} per agent, seed={seed}, "
         f"max_steps={MAX_STEPS}, workers={workers}) ==="
     )
+    run_dir = None
+    if resume:
+        run_dir = MANIFEST_ROOT / _run_id(n, seed, MAX_STEPS)
+        run_dir.mkdir(parents=True, exist_ok=True)
+
     results = {}
     for name in AGENTS:
-        records = run_episodes(name, n=n, base_seed=seed, workers=workers)
+        records = run_episodes(
+            name, n=n, base_seed=seed, workers=workers, run_dir=run_dir
+        )
         results[name] = _aggregate(records)
         print(f"{name}: {json.dumps(results[name])}")
 
@@ -213,11 +278,16 @@ def _parse_args(argv=None):
     ap.add_argument("--episodes", type=int, default=N_EPISODES)
     ap.add_argument("--seed", type=int, default=SEED)
     ap.add_argument("--out", type=Path, default=RESULTS_PATH)
+    ap.add_argument("--no-resume", action="store_true",
+                    help="Ignore and do not write per-episode records.")
     return ap.parse_args(argv)
 
 
 if __name__ == "__main__":
     args = _parse_args()
-    payload = run_leaderboard(n=args.episodes, seed=args.seed, workers=args.workers)
+    payload = run_leaderboard(
+        n=args.episodes, seed=args.seed, workers=args.workers,
+        resume=not args.no_resume,
+    )
     args.out.write_text(json.dumps(payload, indent=2) + "\n")
     print(f"\nWrote {args.out}")
