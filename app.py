@@ -7,7 +7,11 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+# Figures are built via the object API, not pyplot. pyplot keeps every figure it
+# creates in a global registry until explicitly closed; these are created once per
+# streamed step, so on a long-lived Space they accumulate until the process OOMs.
+# Figure() instances are never registered and are freed when Gradio drops them.
+from matplotlib.figure import Figure
 import gradio as gr
 
 from agent.heuristic_agent import HeuristicAgent
@@ -28,7 +32,8 @@ semaphore = threading.Semaphore(1)
 
 
 def _health_figure(health: list[float]):
-    fig, ax = plt.subplots(figsize=(9, 2.6))
+    fig = Figure(figsize=(9, 2.6))
+    ax = fig.subplots()
     if not health:
         ax.text(0.5, 0.5, "No data", ha="center")
         fig.tight_layout()
@@ -45,7 +50,8 @@ def _health_figure(health: list[float]):
 
 
 def _service_cpu_figure(metrics_hist: list[dict]):
-    fig, ax = plt.subplots(figsize=(9, 3.0))
+    fig = Figure(figsize=(9, 3.0))
+    ax = fig.subplots()
     if not metrics_hist:
         ax.text(0.5, 0.5, "Run steps to plot noisy CPU", ha="center", va="center")
         ax.set_axis_off()
