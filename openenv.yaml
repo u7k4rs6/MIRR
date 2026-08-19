@@ -1,7 +1,10 @@
 env_id: incident-response-v1
 version: "1.0"
 score_range: [0, 1]
-max_steps: 20
+# The demo and every app.py entry point construct IncidentResponseEnv(max_steps=30);
+# 30 is the horizon a user actually gets. The class default is 20 and eval/evaluate.py
+# uses it, so eval/results.json is measured at 20 - see max_steps in that file.
+max_steps: 30
 success_threshold: 0.888
 failure_threshold: 0.10
 services:
