@@ -181,6 +181,28 @@ are identical at any worker count - only wall-clock changes. Completed episodes
 are written to `eval/.runs/` (gitignored), so an interrupted run resumes and
 finishes the remainder rather than starting over.
 
+`--bench` additionally times a 1-worker pass against an N-worker pass and writes
+`eval/bench.json`. That file is gitignored by default, because wall-clock is not
+reproducible and would dirty `results.json` on every run. One snapshot is
+committed deliberately as a documented benchmark, with the machine it was
+measured on:
+
+| | |
+|---|---|
+| CPU | 12th Gen Intel Core i5-12450HX, 12 logical cores |
+| RAM | 11 GB |
+| Python | 3.11.15, Linux x86_64 |
+| Episodes | 100 per agent, 2 agents |
+| 1 worker | 0.504 s |
+| 12 workers | 0.173 s |
+| **Speedup** | **2.91x** |
+
+Well short of 12x, and that is expected: the whole workload is under a second, so
+process startup and result marshalling are a large fraction of it. The gap
+narrows as the run grows - measured on the same machine, roughly 3.9x at 1000
+episodes per agent and 4.6x at 4000. Re-run `--bench` on your own hardware rather
+than trusting these numbers; they describe one laptop.
+
 **HF Space:** add `GROQ_API_KEY` under Space secrets. The app listens on `PORT` (default `7860`).
 
 ---

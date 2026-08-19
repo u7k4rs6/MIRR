@@ -1,0 +1,17 @@
+{
+  "machine": {
+    "cpu_model": "12th Gen Intel(R) Core(TM) i5-12450HX",
+    "cpu_count": 12,
+    "ram_gb": 11.0,
+    "python_version": "3.11.15",
+    "platform": "Linux-7.0.0-29-generic-x86_64-with-glibc2.43"
+  },
+  "code_fingerprint": "sha256:621558321891274f",
+  "seed": 12345,
+  "episodes_per_agent": 100,
+  "max_steps": 30,
+  "workers": 12,
+  "wall_clock_seconds_1_worker": 0.504,
+  "wall_clock_seconds": 0.173,
+  "speedup_vs_1_worker": 2.91
+}
