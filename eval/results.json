@@ -9,6 +9,10 @@
     "Random",
     "Heuristic"
   ],
+  "workers": 12,
+  "wall_clock_seconds": 0.126,
+  "wall_clock_seconds_1_worker": 0.319,
+  "speedup_vs_1_worker": 2.54,
   "results": {
     "Random": {
       "mean_reward": -21.69,

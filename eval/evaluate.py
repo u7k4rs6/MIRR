@@ -5,6 +5,8 @@ import os
 import random
 import subprocess
 import sys
+import tempfile
+import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -231,7 +233,24 @@ def default_workers() -> int:
     return os.cpu_count() or 1
 
 
-def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = True):
+def _timed_pass(n: int, seed: int, workers: int, run_dir: Path) -> tuple:
+    """One full pass over both agents. Returns (results, wall_clock_seconds).
+
+    Timing excludes nothing: it is measured around the actual work, so the
+    recorded speedup is what a user would observe, including pool startup.
+    """
+    started = time.perf_counter()
+    results = {}
+    for name in AGENTS:
+        records = run_episodes(
+            name, n=n, base_seed=seed, workers=workers, run_dir=run_dir
+        )
+        results[name] = _aggregate(records)
+    return results, time.perf_counter() - started
+
+
+def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = True,
+                    measure_speedup: bool = True):
     """Measure the deterministic baselines. LLM agents are not evaluated here:
     they depend on a live third-party API, so their numbers are not reproducible
     from this repo alone."""
@@ -244,13 +263,37 @@ def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = Tr
         run_dir = MANIFEST_ROOT / _run_id(n, seed, MAX_STEPS)
         run_dir.mkdir(parents=True, exist_ok=True)
 
-    results = {}
-    for name in AGENTS:
-        records = run_episodes(
-            name, n=n, base_seed=seed, workers=workers, run_dir=run_dir
-        )
-        results[name] = _aggregate(records)
-        print(f"{name}: {json.dumps(results[name])}")
+    timing = {}
+    if measure_speedup and workers > 1:
+        # Serial baseline first, on a scratch manifest so it does not pre-populate
+        # the parallel pass and make it look instant.
+        with tempfile.TemporaryDirectory() as scratch:
+            _, serial_seconds = _timed_pass(n, seed, 1, Path(scratch))
+        with tempfile.TemporaryDirectory() as scratch:
+            results, parallel_seconds = _timed_pass(n, seed, workers, Path(scratch))
+        timing = {
+            "wall_clock_seconds_1_worker": round(serial_seconds, 3),
+            "wall_clock_seconds": round(parallel_seconds, 3),
+            "speedup_vs_1_worker": round(serial_seconds / parallel_seconds, 2),
+        }
+        # Real run, resumable, so the artifact reflects the resumable path too.
+        results, _ = _timed_pass(n, seed, workers, run_dir)
+    else:
+        results, seconds = _timed_pass(n, seed, workers, run_dir)
+        timing = {
+            "wall_clock_seconds_1_worker": round(seconds, 3) if workers == 1 else None,
+            "wall_clock_seconds": round(seconds, 3),
+            "speedup_vs_1_worker": 1.0 if workers == 1 else None,
+        }
+
+    for name, r in results.items():
+        print(f"{name}: {json.dumps(r)}")
+    print(
+        f"timing: {timing['wall_clock_seconds']}s at {workers} worker(s)"
+        + (f", {timing['wall_clock_seconds_1_worker']}s at 1"
+           f" -> {timing['speedup_vs_1_worker']}x"
+           if timing.get("speedup_vs_1_worker") is not None and workers > 1 else "")
+    )
 
     # No timestamp: the artifact is identified by code_fingerprint, not by when it
     # was produced. A wall-clock field would make every re-run dirty the tree even
@@ -263,6 +306,10 @@ def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = Tr
         "episodes_per_agent": n,
         "max_steps": MAX_STEPS,
         "agents_evaluated": list(AGENTS),
+        "workers": workers,
+        "wall_clock_seconds": timing["wall_clock_seconds"],
+        "wall_clock_seconds_1_worker": timing["wall_clock_seconds_1_worker"],
+        "speedup_vs_1_worker": timing["speedup_vs_1_worker"],
         "results": results,
     }
     return payload
@@ -278,6 +325,8 @@ def _parse_args(argv=None):
     ap.add_argument("--episodes", type=int, default=N_EPISODES)
     ap.add_argument("--seed", type=int, default=SEED)
     ap.add_argument("--out", type=Path, default=RESULTS_PATH)
+    ap.add_argument("--no-speedup", action="store_true",
+                    help="Skip the 1-worker baseline pass (leaves speedup unmeasured).")
     ap.add_argument("--no-resume", action="store_true",
                     help="Ignore and do not write per-episode records.")
     return ap.parse_args(argv)
@@ -287,7 +336,7 @@ if __name__ == "__main__":
     args = _parse_args()
     payload = run_leaderboard(
         n=args.episodes, seed=args.seed, workers=args.workers,
-        resume=not args.no_resume,
+        resume=not args.no_resume, measure_speedup=not args.no_speedup,
     )
     args.out.write_text(json.dumps(payload, indent=2) + "\n")
     print(f"\nWrote {args.out}")
