@@ -127,6 +127,17 @@ Episodes run across worker processes on one machine. Each episode's seed derives
 LLM agents are deliberately absent from this table. They call a live third-party API, so their scores are not reproducible from this repo alone.
 <!-- END GENERATED RESULTS -->
 
+**Why the Random figures changed.** Earlier published Random numbers were
+`26% / 4% / -18.08`. They differed because the old sequential runner seeded the
+global `random` module **once per agent** and let a single RNG stream span all
+100 episodes - so episode *n*'s actions depended on how many episodes had run
+before it. That is order-dependent by construction and cannot survive being split
+across workers. The runner now derives a separate seed per episode index, making
+each episode self-contained and the aggregate order-independent; this is verified
+byte-identical at 1, 4 and 8 workers. The Heuristic figures are unchanged, because
+that agent draws no randomness. The difference is a fix to the measurement
+method, not a change in agent behaviour.
+
 ---
 
 ## Environment Design
