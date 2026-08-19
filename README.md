@@ -117,7 +117,7 @@ The `bad_deploy` mode is the one that breaks naive heuristics. If your agent's m
 <!-- BEGIN GENERATED RESULTS (scripts/sync_readme_results.py) -->
 | Agent | Success Rate | Diagnosis Acc. | Mean Reward |
 |---|---|---|---|
-| Random | 26% | 4% | -18.08 |
+| Random | 22% | 3% | -21.69 |
 | Heuristic (log-aware) | 100% | 100% | 55.98 |
 
 Measured over n=100 episodes per agent, seed=12345, `max_steps=30` - the same horizon the demo runs. Code fingerprint `sha256:621558321891274f`. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).

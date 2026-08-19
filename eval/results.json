@@ -11,9 +11,9 @@
   ],
   "results": {
     "Random": {
-      "mean_reward": -18.08,
-      "success_rate": 0.26,
-      "diagnosis_accuracy": 0.04
+      "mean_reward": -21.69,
+      "success_rate": 0.22,
+      "diagnosis_accuracy": 0.03
     },
     "Heuristic": {
       "mean_reward": 55.98,

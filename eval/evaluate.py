@@ -1,8 +1,11 @@
+import argparse
 import hashlib
 import json
+import os
 import random
 import subprocess
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -30,24 +33,101 @@ MAX_STEPS = 30
 RESULTS_PATH = ROOT / "eval" / "results.json"
 
 
-def run_episodes(agent, n=N_EPISODES, seed_offset=0, max_steps=MAX_STEPS):
+AGENTS = {"Random": RandomAgent, "Heuristic": HeuristicAgent}
+
+
+def _env_seed(base_seed: int, idx: int) -> int:
+    """Seed for episode `idx`. Depends only on (base_seed, idx) - never on
+    execution order - so an episode is identical at any worker count."""
+    return base_seed + idx
+
+
+def _agent_seed(base_seed: int, idx: int) -> int:
+    """Separate deterministic stream for the agent's own RNG.
+
+    RandomAgent draws from the global `random` module. Seeding it once per run
+    and letting the stream continue across episodes would make every episode
+    depend on how many ran before it - which is exactly what breaks when work is
+    distributed over workers. Deriving a per-episode seed makes each episode
+    self-contained and order-independent.
+    """
+    return (base_seed * 1_000_003 + idx * 31 + 17) % (2**32)
+
+
+def run_one_episode(task: tuple) -> dict:
+    """Run a single episode. Top-level and pure so it is picklable and carries no
+    state between episodes. Returns a record, not an aggregate."""
+    agent_name, idx, base_seed, max_steps = task
+
+    # Each episode reseeds both RNGs from its own index.
+    agent_rng_seed = _agent_seed(base_seed, idx)
+    random.seed(agent_rng_seed)
+    np.random.seed(agent_rng_seed)
+
     env = IncidentResponseEnv(max_steps=max_steps)
-    rewards, successes, diag_correct = [], [], []
-    for i in range(n):
-        obs, _ = env.reset(seed=seed_offset + i)
-        if hasattr(agent, "reset"):
-            agent.reset()
-        total_reward = 0.0
-        done = False
-        info = {}
-        while not done:
-            action = agent.act(obs)
-            obs, r, done, _, info = env.step(action)
-            total_reward += r
-        rewards.append(total_reward)
-        successes.append(1 if info.get("outcome") == "success" else 0)
-        diag_correct.append(1 if info.get("diagnosis_correct") else 0)
-    return rewards, successes, diag_correct
+    agent = AGENTS[agent_name]()
+    if hasattr(agent, "reset"):
+        agent.reset()
+
+    obs, _ = env.reset(seed=_env_seed(base_seed, idx))
+    total_reward = 0.0
+    done = False
+    info = {}
+    while not done:
+        obs, r, done, _, info = env.step(agent.act(obs))
+        total_reward += r
+    return {
+        "agent": agent_name,
+        "index": idx,
+        "reward": total_reward,
+        "success": 1 if info.get("outcome") == "success" else 0,
+        "diagnosis_correct": 1 if info.get("diagnosis_correct") else 0,
+    }
+
+
+def _chunks(tasks: list, workers: int) -> list:
+    """Contiguous slices, one per worker, so IPC is paid per worker rather than
+    per episode. Episodes are short; per-task dispatch would dominate."""
+    if workers <= 1:
+        return [tasks]
+    size = max(1, (len(tasks) + workers - 1) // workers)
+    return [tasks[i : i + size] for i in range(0, len(tasks), size)]
+
+
+def _run_chunk(chunk: list) -> list:
+    return [run_one_episode(task) for task in chunk]
+
+
+def run_episodes(agent_name: str, n=N_EPISODES, base_seed=SEED, max_steps=MAX_STEPS,
+                 workers: int = 1) -> list:
+    """Run n episodes, optionally across a local process pool.
+
+    Returns records sorted by episode index, never by completion order - so the
+    aggregate is bit-identical regardless of worker count.
+    """
+    tasks = [(agent_name, i, base_seed, max_steps) for i in range(n)]
+    if workers <= 1:
+        records = [run_one_episode(t) for t in tasks]
+    else:
+        records = []
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            for batch in pool.map(_run_chunk, _chunks(tasks, workers)):
+                records.extend(batch)
+    records.sort(key=lambda r: r["index"])
+    return records
+
+
+def _aggregate(records: list) -> dict:
+    """Aggregate in index order. Float addition is not associative, so summing in
+    completion order would make the mean depend on scheduling."""
+    ordered = sorted(records, key=lambda r: r["index"])
+    return {
+        "mean_reward": round(float(np.mean([r["reward"] for r in ordered])), 2),
+        "success_rate": round(float(np.mean([r["success"] for r in ordered])), 3),
+        "diagnosis_accuracy": round(
+            float(np.mean([r["diagnosis_correct"] for r in ordered])), 3
+        ),
+    }
 
 
 def _code_fingerprint() -> str:
@@ -89,21 +169,22 @@ def _code_git_dirty() -> bool:
     return bool(_git("status", "--porcelain", "--", *CODE_PATHS))
 
 
-def run_leaderboard(n=N_EPISODES, seed=SEED):
+def default_workers() -> int:
+    return os.cpu_count() or 1
+
+
+def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1):
     """Measure the deterministic baselines. LLM agents are not evaluated here:
     they depend on a live third-party API, so their numbers are not reproducible
     from this repo alone."""
-    print(f"\n=== LEADERBOARD (n={n} per agent, seed={seed}, max_steps={MAX_STEPS}) ===")
+    print(
+        f"\n=== LEADERBOARD (n={n} per agent, seed={seed}, "
+        f"max_steps={MAX_STEPS}, workers={workers}) ==="
+    )
     results = {}
-    for name, factory in [("Random", RandomAgent), ("Heuristic", HeuristicAgent)]:
-        random.seed(seed)
-        np.random.seed(seed)
-        rewards, successes, diag = run_episodes(factory(), n=n, seed_offset=seed)
-        results[name] = {
-            "mean_reward": round(float(np.mean(rewards)), 2),
-            "success_rate": round(float(np.mean(successes)), 3),
-            "diagnosis_accuracy": round(float(np.mean(diag)), 3),
-        }
+    for name in AGENTS:
+        records = run_episodes(name, n=n, base_seed=seed, workers=workers)
+        results[name] = _aggregate(records)
         print(f"{name}: {json.dumps(results[name])}")
 
     # No timestamp: the artifact is identified by code_fingerprint, not by when it
@@ -116,13 +197,27 @@ def run_leaderboard(n=N_EPISODES, seed=SEED):
         "seed": seed,
         "episodes_per_agent": n,
         "max_steps": MAX_STEPS,
-        "agents_evaluated": ["Random", "Heuristic"],
+        "agents_evaluated": list(AGENTS),
         "results": results,
     }
     return payload
 
 
+def _parse_args(argv=None):
+    ap = argparse.ArgumentParser(description="Measure MIRR baselines.")
+    ap.add_argument(
+        "--workers", type=int, default=default_workers(),
+        help="Local worker processes (default: CPU count). Results are identical "
+             "at any worker count; only wall-clock changes.",
+    )
+    ap.add_argument("--episodes", type=int, default=N_EPISODES)
+    ap.add_argument("--seed", type=int, default=SEED)
+    ap.add_argument("--out", type=Path, default=RESULTS_PATH)
+    return ap.parse_args(argv)
+
+
 if __name__ == "__main__":
-    payload = run_leaderboard()
-    RESULTS_PATH.write_text(json.dumps(payload, indent=2) + "\n")
-    print(f"\nWrote {RESULTS_PATH.relative_to(ROOT)}")
+    args = _parse_args()
+    payload = run_leaderboard(n=args.episodes, seed=args.seed, workers=args.workers)
+    args.out.write_text(json.dumps(payload, indent=2) + "\n")
+    print(f"\nWrote {args.out}")
