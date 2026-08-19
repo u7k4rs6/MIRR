@@ -38,7 +38,9 @@ You can watch an agent run live in the Gradio demo, play the same incident yours
 | Source / updates | [github.com/u7k4rs6/MIRR](https://github.com/u7k4rs6/MIRR) |
 | Episode Rollouts (Dataset) | Step 4 in `train.ipynb`. Default: `YOUR_USERNAME/incident-response-rollouts` |
 
-**Hub uploads:** Set `HF_TOKEN` and `HF_HUB_USERNAME` in Colab (or `.env` locally), then run Steps 3 and 4 of `train.ipynb`. Copy `.env.example` to `.env` for local runs - it's gitignored.
+**Hub uploads:** Step 4 of `train.ipynb` publishes heuristic-agent rollouts as a dataset. Step 3 pushes a *trained model* - it has nothing to push until you actually train one, and will skip itself until then.
+
+Set `HF_TOKEN` and `HF_HUB_USERNAME` via Colab Secrets, or export them in the shell that launches Jupyter. **`.env` does not work for these** - only `app.py` and `eval/evaluate.py` call `load_dotenv`; `train.ipynb` never does, so values placed there are silently ignored. `.env` is read for `GROQ_API_KEY` (and `GROQ_MODEL`) when running the app locally; copy `.env.example` to `.env` for that - it's gitignored.
 
 ---
 
