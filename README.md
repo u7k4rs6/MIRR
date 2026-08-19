@@ -16,6 +16,8 @@ pinned: false
 >
 > *Your agent has 30 steps.*
 
+*Originally built for the Meta x PyTorch Hackathon.*
+
 ---
 
 ## What is this?
@@ -34,10 +36,12 @@ You can watch an agent run live in the Gradio demo, play the same incident yours
 
 | Deliverable | Link |
 |---|---|
-| HF Space (live demo) | Create a Space from this repo, then paste your URL here |
+| HF Space (live demo) | [huggingface.co/spaces/u7k4rs6/Metafinal](https://huggingface.co/spaces/u7k4rs6/Metafinal) |
 | Training Notebook (Colab) | Open in Colab - or upload `train.ipynb` from this clone |
 | Source / updates | [github.com/u7k4rs6/MIRR](https://github.com/u7k4rs6/MIRR) |
 | Episode Rollouts (Dataset) | Step 4 in `train.ipynb`. Default: `YOUR_USERNAME/incident-response-rollouts` |
+
+The Space is named **Metafinal** because it was originally built for the Meta x PyTorch Hackathon and is grandfathered onto free CPU hardware; it serves the current MIRR code.
 
 **Hub uploads:** Step 4 of `train.ipynb` publishes heuristic-agent rollouts as a dataset. Step 3 pushes a *trained model* - it has nothing to push until you actually train one, and will skip itself until then.
 
