@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-19T09:06:55Z",
-  "code_fingerprint": "sha256:b71c0a49872592b9",
-  "git_sha_at_measurement": "f3e26b9",
-  "git_dirty_at_measurement": true,
+  "generated_at": "2026-08-19T09:23:13Z",
+  "code_fingerprint": "sha256:621558321891274f",
+  "git_sha_at_measurement": "2cbbec8",
+  "git_dirty_at_measurement": false,
   "seed": 12345,
   "episodes_per_agent": 100,
   "max_steps": 20,
