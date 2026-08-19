@@ -122,6 +122,8 @@ The `bad_deploy` mode is the one that breaks naive heuristics. If your agent's m
 
 Measured over n=100 episodes per agent, seed=12345, `max_steps=30` - the same horizon the demo runs. Code fingerprint `sha256:621558321891274f`. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
 
+Episodes ran across 12 worker processes on one machine (0.126s, versus 0.319s single-worker - 2.54x). Each episode's seed derives from the base seed and its index, so the numbers above are identical at any worker count; only wall-clock changes.
+
 LLM agents are deliberately absent from this table. They call a live third-party API, so their scores are not reproducible from this repo alone.
 <!-- END GENERATED RESULTS -->
 
@@ -162,6 +164,22 @@ export PYTHONPATH="$(pwd)"
 python eval/evaluate.py
 python app.py
 ```
+
+**Evaluation runner.** `eval/evaluate.py` spreads episodes across worker
+processes on the machine it runs on. This is local multiprocessing via the
+standard library's `concurrent.futures` - there is no cluster, no scheduler, and
+no distributed framework, and adding machines does nothing.
+
+```bash
+python eval/evaluate.py                 # workers default to CPU count
+python eval/evaluate.py --workers 1     # serial
+python eval/evaluate.py --no-speedup    # skip the 1-worker baseline pass
+```
+
+Each episode's seed derives from the base seed and the episode index, so results
+are identical at any worker count - only wall-clock changes. Completed episodes
+are written to `eval/.runs/` (gitignored), so an interrupted run resumes and
+finishes the remainder rather than starting over.
 
 **HF Space:** add `GROQ_API_KEY` under Space secrets. The app listens on `PORT` (default `7860`).
 

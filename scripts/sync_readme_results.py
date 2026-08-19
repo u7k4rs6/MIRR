@@ -32,6 +32,12 @@ REQUIRED_TOP = (
     "code_fingerprint",
     "code_git_sha",
     "code_git_dirty",
+    # Added by the parallel runner. Required so an artifact from the old
+    # sequential runner is rejected rather than silently published.
+    "workers",
+    "wall_clock_seconds",
+    "wall_clock_seconds_1_worker",
+    "speedup_vs_1_worker",
 )
 REQUIRED_PER_AGENT = ("success_rate", "diagnosis_accuracy", "mean_reward")
 
@@ -88,6 +94,12 @@ def render() -> str:
         f"runs. Code fingerprint `{d['code_fingerprint']}`. Reproduce with "
         "`python eval/evaluate.py`; raw output is committed at "
         "[`eval/results.json`](eval/results.json).",
+        "",
+        f"Episodes ran across {d['workers']} worker processes on one machine "
+        f"({d['wall_clock_seconds']}s, versus {d['wall_clock_seconds_1_worker']}s "
+        f"single-worker - {d['speedup_vs_1_worker']}x). Each episode's seed derives "
+        "from the base seed and its index, so the numbers above are identical at any "
+        "worker count; only wall-clock changes.",
         "",
         "LLM agents are deliberately absent from this table. They call a live "
         "third-party API, so their scores are not reproducible from this repo alone.",
