@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import random
+import platform
 import subprocess
 import sys
 import tempfile
@@ -36,6 +37,10 @@ RESULTS_PATH = ROOT / "eval" / "results.json"
 # Per-episode records for resume. Gitignored: this is scratch state for an
 # in-progress run, not a published artifact.
 MANIFEST_ROOT = ROOT / "eval" / ".runs"
+# Timing lives apart from results.json. Wall-clock is not reproducible, so mixing
+# it into the published artifact would dirty the tree on every re-run. Written
+# only under --bench, and gitignored unless deliberately committed.
+BENCH_PATH = ROOT / "eval" / "bench.json"
 
 
 AGENTS = {"Random": RandomAgent, "Heuristic": HeuristicAgent}
@@ -233,6 +238,33 @@ def default_workers() -> int:
     return os.cpu_count() or 1
 
 
+def _machine_spec() -> dict:
+    """A speedup figure without hardware is not reproducible."""
+    cpu_model = "unknown"
+    try:
+        for line in Path("/proc/cpuinfo").read_text().splitlines():
+            if line.startswith("model name"):
+                cpu_model = line.split(":", 1)[1].strip()
+                break
+    except OSError:
+        pass
+    ram_gb = None
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemTotal"):
+                ram_gb = round(int(line.split()[1]) / 1024 / 1024, 1)
+                break
+    except OSError:
+        pass
+    return {
+        "cpu_model": cpu_model,
+        "cpu_count": os.cpu_count(),
+        "ram_gb": ram_gb,
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+    }
+
+
 def _timed_pass(n: int, seed: int, workers: int, run_dir: Path) -> tuple:
     """One full pass over both agents. Returns (results, wall_clock_seconds).
 
@@ -249,8 +281,28 @@ def _timed_pass(n: int, seed: int, workers: int, run_dir: Path) -> tuple:
     return results, time.perf_counter() - started
 
 
-def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = True,
-                    measure_speedup: bool = True):
+def run_benchmark(n=N_EPISODES, seed=SEED, workers: int = 1) -> dict:
+    """Measure wall-clock at 1 worker versus `workers`, on scratch manifests so a
+    resumed run cannot make either pass look instant. Separate from
+    run_leaderboard because timing is not part of the published result."""
+    with tempfile.TemporaryDirectory() as scratch:
+        _, serial_seconds = _timed_pass(n, seed, 1, Path(scratch))
+    with tempfile.TemporaryDirectory() as scratch:
+        _, parallel_seconds = _timed_pass(n, seed, workers, Path(scratch))
+    return {
+        "machine": _machine_spec(),
+        "code_fingerprint": _code_fingerprint(),
+        "seed": seed,
+        "episodes_per_agent": n,
+        "max_steps": MAX_STEPS,
+        "workers": workers,
+        "wall_clock_seconds_1_worker": round(serial_seconds, 3),
+        "wall_clock_seconds": round(parallel_seconds, 3),
+        "speedup_vs_1_worker": round(serial_seconds / parallel_seconds, 2),
+    }
+
+
+def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = True):
     """Measure the deterministic baselines. LLM agents are not evaluated here:
     they depend on a live third-party API, so their numbers are not reproducible
     from this repo alone."""
@@ -263,37 +315,9 @@ def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = Tr
         run_dir = MANIFEST_ROOT / _run_id(n, seed, MAX_STEPS)
         run_dir.mkdir(parents=True, exist_ok=True)
 
-    timing = {}
-    if measure_speedup and workers > 1:
-        # Serial baseline first, on a scratch manifest so it does not pre-populate
-        # the parallel pass and make it look instant.
-        with tempfile.TemporaryDirectory() as scratch:
-            _, serial_seconds = _timed_pass(n, seed, 1, Path(scratch))
-        with tempfile.TemporaryDirectory() as scratch:
-            results, parallel_seconds = _timed_pass(n, seed, workers, Path(scratch))
-        timing = {
-            "wall_clock_seconds_1_worker": round(serial_seconds, 3),
-            "wall_clock_seconds": round(parallel_seconds, 3),
-            "speedup_vs_1_worker": round(serial_seconds / parallel_seconds, 2),
-        }
-        # Real run, resumable, so the artifact reflects the resumable path too.
-        results, _ = _timed_pass(n, seed, workers, run_dir)
-    else:
-        results, seconds = _timed_pass(n, seed, workers, run_dir)
-        timing = {
-            "wall_clock_seconds_1_worker": round(seconds, 3) if workers == 1 else None,
-            "wall_clock_seconds": round(seconds, 3),
-            "speedup_vs_1_worker": 1.0 if workers == 1 else None,
-        }
-
+    results, _ = _timed_pass(n, seed, workers, run_dir)
     for name, r in results.items():
         print(f"{name}: {json.dumps(r)}")
-    print(
-        f"timing: {timing['wall_clock_seconds']}s at {workers} worker(s)"
-        + (f", {timing['wall_clock_seconds_1_worker']}s at 1"
-           f" -> {timing['speedup_vs_1_worker']}x"
-           if timing.get("speedup_vs_1_worker") is not None and workers > 1 else "")
-    )
 
     # No timestamp: the artifact is identified by code_fingerprint, not by when it
     # was produced. A wall-clock field would make every re-run dirty the tree even
@@ -306,10 +330,6 @@ def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = Tr
         "episodes_per_agent": n,
         "max_steps": MAX_STEPS,
         "agents_evaluated": list(AGENTS),
-        "workers": workers,
-        "wall_clock_seconds": timing["wall_clock_seconds"],
-        "wall_clock_seconds_1_worker": timing["wall_clock_seconds_1_worker"],
-        "speedup_vs_1_worker": timing["speedup_vs_1_worker"],
         "results": results,
     }
     return payload
@@ -325,8 +345,10 @@ def _parse_args(argv=None):
     ap.add_argument("--episodes", type=int, default=N_EPISODES)
     ap.add_argument("--seed", type=int, default=SEED)
     ap.add_argument("--out", type=Path, default=RESULTS_PATH)
-    ap.add_argument("--no-speedup", action="store_true",
-                    help="Skip the 1-worker baseline pass (leaves speedup unmeasured).")
+    ap.add_argument("--bench", action="store_true",
+                    help="Also measure 1-worker vs N wall-clock and write eval/bench.json. "
+                         "Off by default: timing is not reproducible and does not belong "
+                         "in results.json.")
     ap.add_argument("--no-resume", action="store_true",
                     help="Ignore and do not write per-episode records.")
     return ap.parse_args(argv)
@@ -336,7 +358,17 @@ if __name__ == "__main__":
     args = _parse_args()
     payload = run_leaderboard(
         n=args.episodes, seed=args.seed, workers=args.workers,
-        resume=not args.no_resume, measure_speedup=not args.no_speedup,
+        resume=not args.no_resume,
     )
     args.out.write_text(json.dumps(payload, indent=2) + "\n")
     print(f"\nWrote {args.out}")
+
+    if args.bench:
+        bench = run_benchmark(n=args.episodes, seed=args.seed, workers=args.workers)
+        BENCH_PATH.write_text(json.dumps(bench, indent=2) + "\n")
+        print(
+            f"bench: {bench['wall_clock_seconds']}s at {bench['workers']} workers vs "
+            f"{bench['wall_clock_seconds_1_worker']}s at 1 -> "
+            f"{bench['speedup_vs_1_worker']}x"
+        )
+        print(f"Wrote {BENCH_PATH}")

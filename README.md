@@ -122,7 +122,7 @@ The `bad_deploy` mode is the one that breaks naive heuristics. If your agent's m
 
 Measured over n=100 episodes per agent, seed=12345, `max_steps=30` - the same horizon the demo runs. Code fingerprint `sha256:621558321891274f`. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
 
-Episodes ran across 12 worker processes on one machine (0.126s, versus 0.319s single-worker - 2.54x). Each episode's seed derives from the base seed and its index, so the numbers above are identical at any worker count; only wall-clock changes.
+Episodes run across worker processes on one machine. Each episode's seed derives from the base seed and its index, so the numbers above are identical at any worker count - verified byte-identical at 1, 4 and 8. Timing is not recorded here because wall-clock is not reproducible; see [`eval/bench.json`](eval/bench.json).
 
 LLM agents are deliberately absent from this table. They call a live third-party API, so their scores are not reproducible from this repo alone.
 <!-- END GENERATED RESULTS -->
