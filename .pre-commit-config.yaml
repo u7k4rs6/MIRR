@@ -1,0 +1,11 @@
+# Keeps README.md's Results block in sync with eval/results.json.
+# Install once:  pip install pre-commit && pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: readme-results-sync
+        name: README Results block matches eval/results.json
+        entry: python scripts/sync_readme_results.py --check
+        language: system
+        pass_filenames: false
+        files: ^(README\.md|eval/results\.json|scripts/sync_readme_results\.py)$

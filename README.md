@@ -106,14 +106,16 @@ The `bad_deploy` mode is the one that breaks naive heuristics. If your agent's m
 
 ## Results
 
+<!-- BEGIN GENERATED RESULTS (scripts/sync_readme_results.py) -->
 | Agent | Success Rate | Diagnosis Acc. | Mean Reward |
 |---|---|---|---|
 | Random | 26% | 4% | -18.08 |
 | Heuristic (log-aware) | 100% | 100% | 55.98 |
 
-Measured over n=100 episodes per agent, seed=12345, `max_steps=30` - the same horizon the demo runs. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
+Measured over n=100 episodes per agent, seed=12345, `max_steps=30` - the same horizon the demo runs. Code fingerprint `sha256:621558321891274f`. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
 
 LLM agents are deliberately absent from this table. They call a live third-party API, so their scores are not reproducible from this repo alone.
+<!-- END GENERATED RESULTS -->
 
 ---
 
@@ -125,7 +127,8 @@ env/environment.py    - Episodic API: reset / step / render
 env/simulator.py      - Hidden state, failure propagation, health logic
 agent/                - Random, heuristic, and LLM agents
 eval/evaluate.py      - Evaluation loop (writes eval/results.json)
-eval/results.json     - Committed baseline measurements
+eval/results.json     - Committed baseline measurements (the only valid numbers)
+scripts/              - README results sync + check, daily Slack poster
 train.ipynb           - GRPO training scaffold (Colab-ready; no trained model yet)
 app.py                - Gradio live demo
 ```
