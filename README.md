@@ -36,7 +36,6 @@ You can watch an agent run live in the Gradio demo, play the same incident yours
 | HF Space (live demo) | Create a Space from this repo, then paste your URL here |
 | Training Notebook (Colab) | Open in Colab - or upload `train.ipynb` from this clone |
 | Source / updates | [github.com/u7k4rs6/MIRR](https://github.com/u7k4rs6/MIRR) |
-| Trained Model | Run Step 3 in `train.ipynb` after training. Set `HF_TOKEN` + `HF_HUB_USERNAME`. Default: `YOUR_USERNAME/incident-response-grpo` |
 | Episode Rollouts (Dataset) | Step 4 in `train.ipynb`. Default: `YOUR_USERNAME/incident-response-rollouts` |
 
 **Hub uploads:** Set `HF_TOKEN` and `HF_HUB_USERNAME` in Colab (or `.env` locally), then run Steps 3 and 4 of `train.ipynb`. Copy `.env.example` to `.env` for local runs - it's gitignored.
