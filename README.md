@@ -1,3 +1,14 @@
+---
+title: MIRR — Incident Response Lab
+emoji: 🚨
+colorFrom: gray
+colorTo: blue
+sdk: gradio
+sdk_version: 6.24.0
+app_file: app.py
+pinned: false
+---
+
 # MIRR - Microservice Incident Response & Recovery
 
 > *At 3 AM, your payment service starts failing. Orders are queuing. Health checks are lying. You have five microservices, one silent killer, and no idea where to start.*
@@ -150,7 +161,6 @@ python app.py
 - [ ] Public HF Space - smoke-test from incognito
 - [ ] `openenv.yaml` at repo root
 - [ ] `environment.py` implements `reset()` / `step()` / `render()`
-- [ ] `training_curves/reward_curve.png` and `loss_curve.png` committed
 - [ ] `train.ipynb` runnable end-to-end; Colab copy in sync
 - [ ] README links point at live URLs
 
