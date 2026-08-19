@@ -1,11 +1,12 @@
-gradio>=4.0.0
+# Hugging Face Space runtime. Only what app.py imports.
+# Training deps live in requirements-train.txt (they need CUDA and would fail
+# the Space build).
+
+# gradio 6.x is required: `theme` moved from Blocks(...) to launch(...) in 6.0,
+# and app.py passes it to launch(). A 5.x resolve raises TypeError at startup.
+# Pinned to the exact version tested; README.md sdk_version must match.
+gradio==6.24.0
 python-dotenv>=1.0.0
 numpy>=1.24.0
 matplotlib>=3.7.0
 groq>=0.9.0
-torch>=2.0.0
-transformers>=4.40.0
-trl>=0.8.0
-unsloth
-huggingface_hub
-datasets

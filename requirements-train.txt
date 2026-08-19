@@ -1,0 +1,14 @@
+# GRPO training stack — GPU only. Do NOT add these to requirements.txt:
+# unsloth requires CUDA and pulls the full NVIDIA wheel set, which fails the
+# Hugging Face CPU Space build.
+torch>=2.0.0
+transformers>=4.40.0
+trl>=0.8.0
+unsloth
+datasets
+huggingface_hub
+
+# also imported by the notebook's own cells
+numpy>=1.24.0
+matplotlib>=3.7.0
+accelerate

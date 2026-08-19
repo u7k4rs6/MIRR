@@ -74,8 +74,12 @@ def parse_action(text: str) -> dict:
 
 
 class LLMAgent:
-    def __init__(self, model="llama-3.1-8b-instant", max_tokens=150):
-        self.model = model
+    # Groq retired the llama-3.1-* line; a stale id 404s even with a valid key.
+    # Override with GROQ_MODEL rather than editing this file.
+    DEFAULT_MODEL = "openai/gpt-oss-20b"
+
+    def __init__(self, model=None, max_tokens=150):
+        self.model = model or os.environ.get("GROQ_MODEL") or self.DEFAULT_MODEL
         self.max_tokens = max_tokens
         self.history = []
         self._client: Optional[Groq] = None
