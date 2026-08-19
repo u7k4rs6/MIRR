@@ -25,7 +25,7 @@ MIRR is a partially observable microservice environment where classical rules-ba
 
 Five services. One hidden fault. Noisy metrics. A diagnosis action that forces the agent to commit its reasoning before it acts.
 
-You can watch it happen live in the Gradio demo, step through episodes frame by frame, or wire your own model into the training scaffold.
+You can watch an agent run live in the Gradio demo, play the same incident yourself in the human incident room, replay a saved episode, or wire your own model into the training scaffold.
 
 ---
 
@@ -49,7 +49,8 @@ Here's the actual problem the agent faces each episode:
 
 ```
 Five microservices. One is failing silently.
-Metrics are noisy (±15%). Logs cost a step to read.
+Metrics are noisy (±15% base, scaled up by scenarios and curriculum stages).
+Logs cost a step to read - and past 8 pulls an escalating -0.25 per pull.
 You don't know which service is broken - and neither do your metrics.
 ```
 
@@ -57,7 +58,7 @@ The agent's sequence:
 1. **Observe** - degraded health metrics arrive with noise baked in
 2. **Investigate** - call `check_logs()` to narrow it down (costs a step)
 3. **Diagnose** - explicitly commit to a root cause before touching anything
-4. **Fix** - `restart`, `rollback`, or `scale_up` the right service
+4. **Fix** - `restart_service`, `rollback_deploy`, or `scale_up` the right service
 5. **Confirm** - watch recovery propagate, or watch it get worse
 
 The diagnosis step is the whole game. It's what separates a reasoning agent from a lucky guesser.
@@ -72,7 +73,8 @@ Here's what brute-forcing looks like on the reward function:
 Brute-force: tries all 5 services
   → -2.0 × 4 wrong fix attempts
   → +6.0 on the lucky final hit
-  = -2.0 total
+  = -2.0 total (optimistic: also trips -1.5 per fix aimed
+    at a healthy service, so real brute force scores lower)
 ```
 
 Here's what actually reasoning looks like:
@@ -91,14 +93,14 @@ Reasoning agent: commits to the right diagnosis first
 
 ## Failure Modes
 
-Not all failures are created equal. Three modes, three different twists:
+Not all failures are created equal. Four modes, four different twists:
 
 | Mode | Correct Fix | The Catch |
 |---|---|---|
-| `crashed` | `restart` | Clean. Straightforward. |
-| `memory_leak` | `restart` | Works - but it comes back after 4 steps. |
+| `crashed` | `restart_service` | Clean. Straightforward. |
+| `memory_leak` | `restart_service` | Works - but it comes back 3 ticks after the fix. |
 | `overloaded` | `scale_up` | Restart does nothing. Watch agents flail. |
-| `bad_deploy` | `rollback` | Restart actively makes it worse. |
+| `bad_deploy` | `rollback_deploy` | Restart actively makes it worse. |
 
 The `bad_deploy` mode is the one that breaks naive heuristics. If your agent's mental model is "crashed = restart," it'll restart a bad deploy and tank the health score further. This is intentional.
 
@@ -133,7 +135,7 @@ train.ipynb           - GRPO training scaffold (Colab-ready; no trained model ye
 app.py                - Gradio live demo
 ```
 
-The environment is OpenEnv-compliant. `reset()` / `step()` / `render()` are implemented per spec. Drop in any compatible agent and it runs.
+The environment implements `reset()` / `step()` / `render()` with Gym-style return types, and `openenv.yaml` describes it. That interface is what the repo demonstrates; conformance to the full OpenEnv spec is not verified here. Drop in any agent exposing `act(obs) -> dict` and it runs.
 
 ---
 
