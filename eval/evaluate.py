@@ -23,13 +23,16 @@ from env.environment import IncidentResponseEnv  # noqa: E402
 # module-level RNG has to be seeded too — env seeding alone is not enough.
 SEED = 12345
 N_EPISODES = 100
+# Match the horizon the app actually runs: every app.py entry point constructs
+# IncidentResponseEnv(max_steps=30). The class default is 20, and measuring at 20
+# would publish numbers that do not describe what a visitor gets. The efficiency
+# bonus scales with the horizon, so this materially changes mean reward.
+MAX_STEPS = 30
 RESULTS_PATH = ROOT / "eval" / "results.json"
 
 
-def run_episodes(agent, n=N_EPISODES, seed_offset=0, max_steps=None):
-    env = (
-        IncidentResponseEnv() if max_steps is None else IncidentResponseEnv(max_steps=max_steps)
-    )
+def run_episodes(agent, n=N_EPISODES, seed_offset=0, max_steps=MAX_STEPS):
+    env = IncidentResponseEnv(max_steps=max_steps)
     rewards, successes, diag_correct = [], [], []
     for i in range(n):
         obs, _ = env.reset(seed=seed_offset + i)
@@ -84,8 +87,7 @@ def run_leaderboard(n=N_EPISODES, seed=SEED):
     """Measure the deterministic baselines. LLM agents are not evaluated here:
     they depend on a live third-party API, so their numbers are not reproducible
     from this repo alone."""
-    print(f"\n=== LEADERBOARD (n={n} per agent, seed={seed}) ===")
-    env_probe = IncidentResponseEnv()
+    print(f"\n=== LEADERBOARD (n={n} per agent, seed={seed}, max_steps={MAX_STEPS}) ===")
     results = {}
     for name, factory in [("Random", RandomAgent), ("Heuristic", HeuristicAgent)]:
         random.seed(seed)
@@ -105,7 +107,7 @@ def run_leaderboard(n=N_EPISODES, seed=SEED):
         "git_dirty_at_measurement": _git_dirty(),
         "seed": seed,
         "episodes_per_agent": n,
-        "max_steps": env_probe.max_steps,
+        "max_steps": MAX_STEPS,
         "agents_evaluated": ["Random", "Heuristic"],
         "results": results,
     }

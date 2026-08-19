@@ -108,10 +108,10 @@ The `bad_deploy` mode is the one that breaks naive heuristics. If your agent's m
 
 | Agent | Success Rate | Diagnosis Acc. | Mean Reward |
 |---|---|---|---|
-| Random | 16% | 4% | -18.22 |
-| Heuristic (log-aware) | 100% | 100% | 52.98 |
+| Random | 26% | 4% | -18.08 |
+| Heuristic (log-aware) | 100% | 100% | 55.98 |
 
-Measured over n=100 episodes per agent, seed=12345, `max_steps=20`. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
+Measured over n=100 episodes per agent, seed=12345, `max_steps=30` - the same horizon the demo runs. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
 
 LLM agents are deliberately absent from this table. They call a live third-party API, so their scores are not reproducible from this repo alone.
 

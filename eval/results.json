@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-08-19T09:23:13Z",
+  "generated_at": "2026-08-19T09:39:23Z",
   "code_fingerprint": "sha256:621558321891274f",
-  "git_sha_at_measurement": "2cbbec8",
-  "git_dirty_at_measurement": false,
+  "git_sha_at_measurement": "cbae724",
+  "git_dirty_at_measurement": true,
   "seed": 12345,
   "episodes_per_agent": 100,
-  "max_steps": 20,
+  "max_steps": 30,
   "agents_evaluated": [
     "Random",
     "Heuristic"
   ],
   "results": {
     "Random": {
-      "mean_reward": -18.22,
-      "success_rate": 0.16,
+      "mean_reward": -18.08,
+      "success_rate": 0.26,
       "diagnosis_accuracy": 0.04
     },
     "Heuristic": {
-      "mean_reward": 52.98,
+      "mean_reward": 55.98,
       "success_rate": 1.0,
       "diagnosis_accuracy": 1.0
     }
