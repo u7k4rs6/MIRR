@@ -1,7 +1,7 @@
 {
-  "code_fingerprint": "sha256:621558321891274f",
-  "code_git_sha": "4a197bd",
-  "code_git_dirty": false,
+  "measurement_fingerprint": "sha256:78a08d089b95e0ad",
+  "measurement_git_sha": "a4ff0f1",
+  "measurement_git_dirty": true,
   "seed": 12345,
   "episodes_per_agent": 100,
   "max_steps": 30,

@@ -20,6 +20,10 @@ load_dotenv(ROOT / ".env")
 
 sys.path.insert(0, str(ROOT))
 
+from eval.fingerprint import (  # noqa: E402
+    MEASURED_GIT_PATHS,
+    measurement_fingerprint,
+)
 from agent.heuristic_agent import HeuristicAgent  # noqa: E402
 from agent.random_agent import RandomAgent  # noqa: E402
 from env.environment import IncidentResponseEnv  # noqa: E402
@@ -99,7 +103,7 @@ def _run_id(n: int, seed: int, max_steps: int) -> str:
     """Identifies a run configuration. Resuming only reuses records produced by
     the same config AND the same code, so a code change starts a fresh run
     instead of silently mixing measurements."""
-    key = f"{_code_fingerprint()}|{n}|{seed}|{max_steps}"
+    key = f"{measurement_fingerprint()}|{n}|{seed}|{max_steps}"
     return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 
@@ -195,26 +199,11 @@ def _aggregate(records: list) -> dict:
     }
 
 
-def _code_fingerprint() -> str:
-    """Content hash of the code under test (env/ + agent/). Unlike a commit SHA,
-    this is stable across rebase/amend and can be recomputed by anyone, so the
-    artifact identifies the exact code it measured rather than pointing at a
-    commit that may no longer exist."""
-    h = hashlib.sha256()
-    files = sorted(
-        list((ROOT / "env").glob("*.py")) + list((ROOT / "agent").glob("*.py"))
-    )
-    for f in files:
-        h.update(f.relative_to(ROOT).as_posix().encode())
-        h.update(f.read_bytes())
-    return "sha256:" + h.hexdigest()[:16]
-
-
-# Git context is anchored to the measured code, not to the moment the script ran.
+# Git context is anchored to the measurement, not to the moment the script ran.
 # A run-time HEAD changes on every unrelated commit, so the artifact would dirty
-# the working tree on every re-run. These fields move only when env/ or agent/
-# move - the same condition that changes code_fingerprint.
-CODE_PATHS = ("env", "agent")
+# the working tree on every re-run. These fields move only when the measured set
+# moves - the same condition that changes measurement_fingerprint.
+CODE_PATHS = MEASURED_GIT_PATHS
 
 
 def _git(*args: str) -> str:
@@ -224,13 +213,13 @@ def _git(*args: str) -> str:
         return ""
 
 
-def _code_git_sha() -> str:
-    """Last commit that touched the code under test."""
+def _measurement_git_sha() -> str:
+    """Last commit that touched the measured set (code under test + runner)."""
     return _git("log", "-1", "--format=%h", "--", *CODE_PATHS) or "unknown"
 
 
-def _code_git_dirty() -> bool:
-    """True if the code under test has uncommitted changes."""
+def _measurement_git_dirty() -> bool:
+    """True if the measured set has uncommitted changes."""
     return bool(_git("status", "--porcelain", "--", *CODE_PATHS))
 
 
@@ -291,7 +280,7 @@ def run_benchmark(n=N_EPISODES, seed=SEED, workers: int = 1) -> dict:
         _, parallel_seconds = _timed_pass(n, seed, workers, Path(scratch))
     return {
         "machine": _machine_spec(),
-        "code_fingerprint": _code_fingerprint(),
+        "measurement_fingerprint": measurement_fingerprint(),
         "seed": seed,
         "episodes_per_agent": n,
         "max_steps": MAX_STEPS,
@@ -319,13 +308,13 @@ def run_leaderboard(n=N_EPISODES, seed=SEED, workers: int = 1, resume: bool = Tr
     for name, r in results.items():
         print(f"{name}: {json.dumps(r)}")
 
-    # No timestamp: the artifact is identified by code_fingerprint, not by when it
+    # No timestamp: the artifact is identified by measurement_fingerprint, not by when it
     # was produced. A wall-clock field would make every re-run dirty the tree even
     # when nothing measured has changed.
     payload = {
-        "code_fingerprint": _code_fingerprint(),
-        "code_git_sha": _code_git_sha(),
-        "code_git_dirty": _code_git_dirty(),
+        "measurement_fingerprint": measurement_fingerprint(),
+        "measurement_git_sha": _measurement_git_sha(),
+        "measurement_git_dirty": _measurement_git_dirty(),
         "seed": seed,
         "episodes_per_agent": n,
         "max_steps": MAX_STEPS,

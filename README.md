@@ -120,7 +120,7 @@ The `bad_deploy` mode is the one that breaks naive heuristics. If your agent's m
 | Random | 22% | 3% | -21.69 |
 | Heuristic (log-aware) | 100% | 100% | 55.98 |
 
-Measured over n=100 episodes per agent, seed=12345, `max_steps=30` - the same horizon the demo runs. Code fingerprint `sha256:621558321891274f`. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
+Measured over n=100 episodes per agent, seed=12345, `max_steps=30` - the same horizon the demo runs. Measurement fingerprint `sha256:78a08d089b95e0ad`. Reproduce with `python eval/evaluate.py`; raw output is committed at [`eval/results.json`](eval/results.json).
 
 Episodes run across worker processes on one machine. Each episode's seed derives from the base seed and its index, so the numbers above are identical at any worker count - verified byte-identical at 1, 4 and 8. Timing is not recorded here because wall-clock is not reproducible; see [`eval/bench.json`](eval/bench.json).
 
@@ -137,6 +137,18 @@ each episode self-contained and the aggregate order-independent; this is verifie
 byte-identical at 1, 4 and 8 workers. The Heuristic figures are unchanged, because
 that agent draws no randomness. The difference is a fix to the measurement
 method, not a change in agent behaviour.
+
+**What the fingerprint covers, and why it had to grow.** `measurement_fingerprint`
+hashes `env/`, `agent/` **and** `eval/evaluate.py`. It originally covered only the
+code under test, which was not enough: the change described above moved the
+published Random numbers with no change whatsoever to `env/` or `agent/`. A
+fingerprint excluding the runner would have certified an artifact it could not
+vouch for - the sequential and parallel results are different measurements of
+identical code, and a fingerprint that cannot tell them apart is not evidence of
+anything. The runner's seeding and aggregation are part of the measurement, so
+they are part of the hash. `scripts/sync_readme_results.py` recomputes it and
+fails if the artifact does not match the current tree, so a stale artifact is
+rejected rather than republished.
 
 ---
 

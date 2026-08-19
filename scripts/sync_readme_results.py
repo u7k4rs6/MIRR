@@ -13,6 +13,9 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from eval.fingerprint import measurement_fingerprint  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
 RESULTS = ROOT / "eval" / "results.json"
@@ -29,9 +32,9 @@ REQUIRED_TOP = (
     "seed",
     "episodes_per_agent",
     "max_steps",
-    "code_fingerprint",
-    "code_git_sha",
-    "code_git_dirty",
+    "measurement_fingerprint",
+    "measurement_git_sha",
+    "measurement_git_dirty",
 )
 REQUIRED_PER_AGENT = ("success_rate", "diagnosis_accuracy", "mean_reward")
 
@@ -61,6 +64,16 @@ def load_results() -> dict:
             f"{RESULTS} has no measured agents - refusing to publish an empty "
             "results table. Run: python eval/evaluate.py"
         )
+    recorded = d["measurement_fingerprint"]
+    actual = measurement_fingerprint()
+    if recorded != actual:
+        fail(
+            f"{RESULTS} was produced by a different measurement.\n"
+            f"  recorded: {recorded}\n"
+            f"  current:  {actual}\n"
+            "The code under test or the runner changed since this artifact was "
+            "written. Re-run: python eval/evaluate.py"
+        )
     for agent, r in results.items():
         if not isinstance(r, dict):
             fail(f"{RESULTS}: entry for {agent!r} is not an object")
@@ -85,7 +98,7 @@ def render() -> str:
         "",
         f"Measured over n={d['episodes_per_agent']} episodes per agent, "
         f"seed={d['seed']}, `max_steps={d['max_steps']}` - the same horizon the demo "
-        f"runs. Code fingerprint `{d['code_fingerprint']}`. Reproduce with "
+        f"runs. Measurement fingerprint `{d['measurement_fingerprint']}`. Reproduce with "
         "`python eval/evaluate.py`; raw output is committed at "
         "[`eval/results.json`](eval/results.json).",
         "",

@@ -6,12 +6,12 @@
     "python_version": "3.11.15",
     "platform": "Linux-7.0.0-29-generic-x86_64-with-glibc2.43"
   },
-  "code_fingerprint": "sha256:621558321891274f",
+  "measurement_fingerprint": "sha256:78a08d089b95e0ad",
   "seed": 12345,
   "episodes_per_agent": 100,
   "max_steps": 30,
   "workers": 12,
-  "wall_clock_seconds_1_worker": 0.504,
-  "wall_clock_seconds": 0.173,
-  "speedup_vs_1_worker": 2.91
+  "wall_clock_seconds_1_worker": 0.276,
+  "wall_clock_seconds": 0.095,
+  "speedup_vs_1_worker": 2.92
 }
